@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>2026 환경보호캠페인 - 텀블러 미션</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 24px;
+      background: #fafafa;
+      color: #111827;
+    }
+
+    /* 브랜드 타이틀 */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .brand img { width: 34px; height: 34px; object-fit: contain; }
+    .brand h2 { margin: 0; font-size: 18px; line-height: 1.2; }
+
+    .row { margin: 10px 0; }
+
+    /* 로그인 박스 */
+    .login-box {
+      max-width: 380px;
+      margin-top: 10px;
+      padding: 20px;
+      border-radius: 16px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+    }
+
+    label { font-weight: 700; display: inline-flex; align-items: baseline; gap: 6px; }
+    .hint8 { font-size: 8pt; font-weight: 500; color: #6b7280; }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      margin-top: 6px;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:hover { background: #f9fafb; }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+    }
+
+    .muted { color: #6b7280; font-size: 13px; line-height: 1.5; }
+
+    /* 로그인 후 상단 */
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+
+    /* 안내 문구 박스 */
+    .notice {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 10px 0 14px;
+    }
+
+    /* 집계 카드 */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 12px 0 10px;
+    }
+    .stat {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .stat .k { color:#6b7280; font-size: 12px; margin-bottom: 4px; }
+    .stat .v { font-size: 18px; font-weight: 900; }
+
+    .tag-ok {
+      display:inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid #bbf7d0;
+      background:#ecfdf5;
+      color:#065f46;
+    }
+    .tag-warn {
+      display:inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid #fed7aa;
+      background:#fff7ed;
+      color:#9a3412;
+    }
+
+    /* 캘린더 */
+    .calendar-card {
+      position: relative;
+      border-radius: 18px;
+      padding: 18px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      margin-top: 12px;
+      overflow: hidden;
+    }
+    .calendar-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("grape.png") center/contain no-repeat;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    /* 월~금 5열 */
+    .calendar-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .cell {
+      border-radius: 14px;
+      padding: 12px 8px;
+      text-align: center;
+      background: rgba(255,255,255,.92);
+      border: 1px solid #e5e7eb;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cell .d { font-weight: 900; }
+
+    .cell.done {
+      background: #7c3aed;
+      color: #fff;
+      border-color: #7c3aed;
+    }
+    .cell.leave {
+      background: #e5e7eb;
+      color: #374151;
+      border-color: #d1d5db;
+    }
+
+    @media (max-width: 680px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      body { margin: 14px; }
+      .calendar-grid { gap: 6px; }
+      .cell { padding: 10px 6px; }
+      .brand h2 { font-size: 16px; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ✅ 로그인 전 제목(로그인 성공 시 숨김 처리) -->
+  <div class="brand" id="brandLogin">
+    <img src="logo.png" alt="logo" />
+    <h2>2026 환경보호캠페인 - 텀블러 미션</h2>
+  </div>
+
+  <!-- 로그인 박스 -->
+  <div id="loginBox" class="login-box">
+    <div class="row">
+      <label>영문 이름</label>
+      <select id="userSelect"></select>
+    </div>
+
+    <div class="row">
+      <label>PIN 4자리 <span class="hint8">(휴대번호 뒷4자리)</span></label>
+      <input id="pin" type="password" maxlength="4" inputmode="numeric" />
+    </div>
+
+    <button id="loginBtn">로그인</button>
+    <p id="loginMsg"></p>
+  </div>
+
+  <!-- ✅ 로그인 후 화면 -->
+  <div id="app" style="display:none">
+    <!-- ✅ 로그인 후 제목(이것만 남김) -->
+    <div class="brand" id="brandApp">
+      <img src="logo.png" alt="logo" />
+      <h2>2026 환경보호캠페인 - 텀블러 미션</h2>
+    </div>
+
+    <!-- ✅ 안내 문구(요청 2번) -->
+    <div class="notice">
+      <div class="muted"><b>Working day 기준 인증샷 제출 85% 이상 시 미션 성공!</b></div>
+      <div class="muted">인증샷은 추후 제출양식(ppt파일)에 맞추어 이메일로 제출해주세요.</div>
+    </div>
+
+    <div class="topbar">
+      <span class="pill" id="who"></span>
+      <span class="pill">오늘: <b id="todayLabel"></b></span>
+      <span class="pill">상태: <b id="passText">-</b></span>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <button id="submitBtn">텀블러 인증샷 미션 Clear</button>
+      <button id="leaveBtn">연차 모드: OFF</button>
+      <span class="pill">현재: <b id="modeText">제출</b></span>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <label>분기 선택</label>
+      <select id="periodSelect"></select>
+    </div>
+
+    <!-- ✅ 분기별 집계(요청 3번) -->
+    <div class="stats">
+      <div class="stat">
+        <div class="k">총 Working day</div>
+        <div class="v" id="statWD">-</div>
+      </div>
+      <div class="stat">
+        <div class="k">연차 제외 일수</div>
+        <div class="v" id="statTarget">-</div>
+      </div>
+      <div class="stat">
+        <div class="k">미션 성공 일수(제출)</div>
+        <div class="v" id="statDone">-</div>
+      </div>
+      <div class="stat">
+        <div class="k">달성률</div>
+        <div class="v" id="statRate">-</div>
+      </div>
+    </div>
+
+    <div id="passBadge"></div>
+    <div id="remainText" class="muted" style="margin-top:6px;"></div>
+
+    <div class="calendar-card">
+      <div class="calendar-grid" id="grid"></div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    /**********************
+     * Firebase Config
+     **********************/
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      databaseURL: "https://tumblermission-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    /**********************
+     * 분기 목록
+     **********************/
+    const PERIODS = [
+      { id: "2026Q1", start: "2026-01-12", end: "2026-03-31", label: "2026Q1 (01/12~03/31)" },
+      { id: "2026Q2", start: "2026-04-01", end: "2026-06-30", label: "2026Q2 (04/01~06/30)" },
+      { id: "2026Q3", start: "2026-07-01", end: "2026-09-30", label: "2026Q3 (07/01~09/30)" },
+      { id: "2026Q4", start: "2026-10-01", end: "2026-11-15", label: "2026Q4 (10/01~11/15)" }
+    ];
+
+    /**********************
+     * 공휴일/휴무일(요청 반영)
+     **********************/
+    const HOLIDAYS_2026 = new Set([
+      "2026-02-16","2026-02-17","2026-02-18",
+      "2026-03-02",
+      "2026-05-01","2026-05-05","2026-05-25",
+      "2026-06-03",
+      "2026-08-17",
+      "2026-09-24","2026-09-25",
+      "2026-10-05","2026-10-09",
+    ]);
+
+    /**********************
+     * DOM
+     **********************/
+    const brandLogin = document.getElementById("brandLogin");
+
+    const userSelect = document.getElementById("userSelect");
+    const pinInput = document.getElementById("pin");
+    const loginBtn = document.getElementById("loginBtn");
+    const loginMsg = document.getElementById("loginMsg");
+    const loginBox = document.getElementById("loginBox");
+    const app = document.getElementById("app");
+
+    const who = document.getElementById("who");
+    const todayLabel = document.getElementById("todayLabel");
+    const grid = document.getElementById("grid");
+
+    const submitBtn = document.getElementById("submitBtn");
+    const leaveBtn = document.getElementById("leaveBtn");
+    const modeText = document.getElementById("modeText");
+    const periodSelect = document.getElementById("periodSelect");
+
+    const statWD = document.getElementById("statWD");
+    const statTarget = document.getElementById("statTarget");
+    const statDone = document.getElementById("statDone");
+    const statRate = document.getElementById("statRate");
+    const passBadge = document.getElementById("passBadge");
+    const passText = document.getElementById("passText");
+
+    /**********************
+     * 상태
+     **********************/
+    let currentUser = null;
+    let submissions = {};
+    let leaves = {};
+    let leaveMode = false; // false=제출, true=연차
+
+    /**********************
+     * 유틸
+     **********************/
+    function todayYmd() {
+      const d = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function isWeekend(ymd) {
+      const day = new Date(ymd + "T00:00:00+09:00").getDay();
+      return day === 0 || day === 6;
+    }
+
+    function isLaborDay(ymd) {
+      return ymd.endsWith("-05-01");
+    }
+
+    // working day = 월~금 + (공휴일/5.1 제외)
+    function isWorkingDay(ymd) {
+      if (isWeekend(ymd)) return false;
+      if (HOLIDAYS_2026.has(ymd)) return false;
+      if (isLaborDay(ymd)) return false;
+      return true;
+    }
+
+    function dateRange(startYmd, endYmd) {
+      const out = [];
+      let d = new Date(startYmd + "T00:00:00+09:00");
+      const e = new Date(endYmd + "T00:00:00+09:00");
+      while (d <= e) {
+        out.push(d.toISOString().slice(0,10));
+        d.setDate(d.getDate() + 1);
+      }
+      return out;
+    }
+
+    // 월~금 인덱스(달력 정렬용)
+    function mondayBasedIndex(ymd) {
+      const d = new Date(ymd + "T00:00:00+09:00").getDay();
+      const map = {1:0,2:1,3:2,4:3,5:4}; // Mon..Fri
+      return map[d];
+    }
+
+    /**********************
+     * 데이터 로드
+     **********************/
+    async function loadEmployees() {
+      const snap = await db.ref("employees").get();
+      userSelect.innerHTML = "";
+      if (!snap.exists()) return;
+
+      snap.forEach(c => {
+        const v = c.val();
+        if (v && v.active) {
+          const o = document.createElement("option");
+          o.value = c.key;
+          o.textContent = c.key;
+          userSelect.appendChild(o);
+        }
+      });
+    }
+
+    async function loadUserData() {
+      submissions = (await db.ref(`users/${currentUser}/submissions`).get()).val() || {};
+      leaves = (await db.ref(`users/${currentUser}/leaves`).get()).val() || {};
+    }
+
+    /**********************
+     * 로그인
+     **********************/
+    async function login() {
+      const u = userSelect.value;
+      const p = pinInput.value;
+
+      if (!u) {
+        loginMsg.innerHTML = `<span style="color:#b91c1c;font-weight:800;">직원 목록이 비어있습니다.</span>`;
+        return;
+      }
+
+      const snap = await db.ref(`employees/${u}`).get();
+      if (!snap.exists()) {
+        loginMsg.innerHTML = `<span style="color:#b91c1c;font-weight:800;">직원 정보가 없습니다.</span>`;
+        return;
+      }
+
+      const emp = snap.val();
+      if (!emp.active) {
+        loginMsg.innerHTML = `<span style="color:#b91c1c;font-weight:800;">비활성 계정입니다.</span>`;
+        return;
+      }
+
+      if (String(emp.pin) !== String(p)) {
+        loginMsg.innerHTML = `<span style="color:#b91c1c;font-weight:800;">PIN이 틀렸습니다.</span>`;
+        return;
+      }
+
+      currentUser = u;
+      await loadUserData();
+
+      // ✅ (요청 1) 제목 2개 문제 해결: 로그인 전 제목 숨김
+      brandLogin.style.display = "none";
+
+      // 로그인 화면 사라지고 앱 표시
+      loginBox.style.display = "none";
+      app.style.display = "block";
+
+      who.textContent = `로그인: ${u}`;
+      todayLabel.textContent = todayYmd();
+
+      render();
+    }
+
+    loginBtn.onclick = login;
+    pinInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") login();
+    });
+
+    /**********************
+     * 모드
+     **********************/
+    function setModeLeave(on) {
+      leaveMode = on;
+      modeText.textContent = leaveMode ? "연차" : "제출";
+      leaveBtn.textContent = `연차 모드: ${leaveMode ? "ON" : "OFF"}`;
+    }
+    submitBtn.onclick = () => setModeLeave(false);
+    leaveBtn.onclick = () => setModeLeave(!leaveMode);
+
+    /**********************
+     * 분기 옵션
+     **********************/
+    function initPeriods() {
+      periodSelect.innerHTML = "";
+      PERIODS.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.label;
+        periodSelect.appendChild(opt);
+      });
+      periodSelect.value = "2026Q1";
+    }
+    periodSelect.addEventListener("change", render);
+
+    function currentPeriod() {
+      const id = periodSelect.value;
+      return PERIODS.find(x => x.id === id) || PERIODS[0];
+    }
+
+    /**********************
+     * 렌더
+     **********************/
+    function render() {
+      const p = currentPeriod();
+
+      // 분기 전체 날짜
+      const allDays = dateRange(p.start, p.end);
+
+      // 총 working day
+      const workingDays = allDays.filter(isWorkingDay);
+
+      // 연차 제외 후 목표일수
+      const targetDaysList = workingDays.filter(d => !leaves?.[d]);
+      const targetDays = targetDaysList.length;
+
+      // 성공(=제출) 일수
+      let done = 0;
+      for (const d of targetDaysList) if (submissions?.[d]) done += 1;
+
+      const rate = targetDays > 0 ? done / targetDays : 0;
+      const pass = rate >= 0.85;
+      // ✅ 미션 성공까지 남은 제출 수 계산
+      const required = Math.ceil(targetDays * 0.85);
+      const remaining = Math.max(0, required - done);
+
+      // 문구 출력
+      const remainTextEl = document.getElementById("remainText");
+      if (pass) {
+       remainTextEl.innerHTML = `<span class="ok">🎉 미션 성공! 모든 조건을 달성했습니다.</span>`;
+      } else {
+       remainTextEl.innerHTML =
+      `👉 <b>앞으로 ${remaining}번</b>만 더 제출하면 <b>미션 성공(85%)</b>이에요!`;
+       }
+
+      // ✅ (요청 3) 집계 표시
+      statWD.textContent = workingDays.length;
+      statTarget.textContent = targetDays;
+      statDone.textContent = done;
+      statRate.textContent = (rate * 100).toFixed(1) + "%";
+
+      // 상태 배지
+      passText.textContent = pass ? "미션 성공" : "진행 중";
+      passBadge.innerHTML = pass
+        ? `<span class="tag-ok">✅ 85% 달성 (미션 성공)</span>`
+        : `<span class="tag-warn">⏳ 아직 85% 미만</span>`;
+
+      // ✅ 캘린더 렌더: 월~금 5열, 달력처럼 첫 주 빈칸 삽입
+      grid.innerHTML = "";
+      if (workingDays.length === 0) return;
+
+      const firstIdx = mondayBasedIndex(workingDays[0]) ?? 0;
+      for (let i = 0; i < firstIdx; i++) {
+        const blank = document.createElement("div");
+        blank.className = "cell";
+        blank.style.visibility = "hidden";
+        blank.style.cursor = "default";
+        grid.appendChild(blank);
+      }
+
+      workingDays.forEach(d => {
+        const c = document.createElement("div");
+        c.className = "cell";
+
+        const isLeave = !!leaves?.[d];
+        const isDone = !!submissions?.[d];
+
+        if (isLeave) c.classList.add("leave");
+        else if (isDone) c.classList.add("done");
+
+        c.innerHTML = `<div class="d">${d.slice(5)}</div>`;
+
+        c.onclick = async () => {
+          // 연차 모드면 leaves에 기록, 아니면 submissions에 기록
+          const ref = leaveMode
+            ? db.ref(`users/${currentUser}/leaves/${d}`)
+            : db.ref(`users/${currentUser}/submissions/${d}`);
+
+          const s = await ref.get();
+          s.exists() ? ref.remove() : ref.set(true);
+
+          await loadUserData();
+          render();
+        };
+
+        grid.appendChild(c);
+      });
+    }
+
+    /**********************
+     * 시작
+     **********************/
+    initPeriods();
+    loadEmployees();
+    setModeLeave(false);
+  </script>
+</body>
+</html>

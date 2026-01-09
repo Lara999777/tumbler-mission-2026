@@ -820,7 +820,12 @@
             사진을 선택한 뒤 <b>제출</b>하면 자동으로 용량을 줄여 업로드합니다.
           </div>
 <div style="margin-top: 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-<input accept="image/*" id="photoInput" type="file" />
+<!-- 앨범/카메라 선택: 앨범 업로드를 기본으로 제공합니다 -->
+<input accept="image/*" id="photoInputAlbum" type="file" style="display:none;" />
+<input accept="image/*" id="photoInputCamera" type="file" capture="environment" style="display:none;" />
+<button class="btn btn-outline" id="pickAlbumBtn" type="button"><span>🖼️</span> 앨범에서 선택</button>
+<button class="btn btn-outline" id="pickCameraBtn" type="button"><span>📷</span> 카메라로 촬영</button>
+
 <button class="btn btn-success" id="uploadBtn">
 <span>⬆️</span> 제출하기
             </button>
@@ -1047,7 +1052,10 @@ try {
     const photoPanel = document.getElementById("photoPanel");
     const selectedDateLabel = document.getElementById("selectedDateLabel");
     const selectedStatusPill = document.getElementById("selectedStatusPill");
-    const photoInput = document.getElementById("photoInput");
+    const photoInputAlbum = document.getElementById("photoInputAlbum");
+    const photoInputCamera = document.getElementById("photoInputCamera");
+    const pickAlbumBtn = document.getElementById("pickAlbumBtn");
+    const pickCameraBtn = document.getElementById("pickCameraBtn");
     const photoPreview = document.getElementById("photoPreview");
     const uploadBtn = document.getElementById("uploadBtn");
     const uploadMsg = document.getElementById("uploadMsg");
@@ -1150,6 +1158,7 @@ try {
 
     async function uploadForSelectedDate() {
       if (!currentUser) return;
+      try { await ensureAnonAuth(); } catch (e) { console.error(e); setUploadMessage("인증 초기화에 실패했어요. 네트워크/도메인/Anonymous Auth 설정을 확인해주세요.", "danger"); return; }
       if (leaveMode) {
         setUploadMessage("연차 표시 모드에서는 제출할 수 없어요. 인증 제출 모드로 전환해 주세요.", "warning");
         return;
@@ -1237,7 +1246,8 @@ try {
         });
 
         // UI reset
-        photoInput.value = "";
+        if (photoInputAlbum) photoInputAlbum.value = "";
+        if (photoInputCamera) photoInputCamera.value = "";
         selectedFile = null;
         if (photoPreview) photoPreview.style.display = "none";
 
@@ -1247,9 +1257,27 @@ try {
         setUploadMessage("✅ 제출 완료! (검수중) — 검수 결과에 따라 부적격 처리될 수 있어요.", "success");
       } catch (e) {
         console.error(e);
-        const code = e?.code ? ` (${e.code})` : "";
-        const msg = e?.message ? ` - ${e.message}` : "";
-        setUploadMessage(`업로드 실패${code}${msg}\n→ Storage Rules, storageBucket, CORS(웹호스팅), 네트워크를 확인해주세요.`, "danger");
+        const code = e?.code || "";
+        const rawMsg = e?.message || "";
+        let friendly = "업로드에 실패했어요.";
+
+        if (code.includes("storage/unauthorized") || code.includes("storage/unauthenticated")) {
+          friendly = "업로드 권한이 없어요. Storage Rules에서 업로드 경로(tumblermission/...)를 허용했는지 확인해주세요.";
+        } else if (code.includes("storage/canceled")) {
+          friendly = "업로드가 취소됐어요.";
+        } else if (code.includes("storage/retry-limit-exceeded")) {
+          friendly = "네트워크가 불안정해 업로드가 반복 실패했어요. 잠시 후 다시 시도해주세요.";
+        } else if (code.includes("auth/network-request-failed")) {
+          friendly = "네트워크 오류로 인증/업로드가 실패했어요. 연결 상태를 확인해주세요.";
+        } else if (rawMsg && rawMsg.toLowerCase().includes("cross-origin")) {
+          friendly = "호스팅/CORS 이슈로 업로드가 막혔어요. GitHub Pages 도메인이 Authorized domains에 등록되어 있는지 확인해주세요.";
+        } else if (rawMsg && (rawMsg.toLowerCase().includes("heic") || rawMsg.toLowerCase().includes("decode") || rawMsg.toLowerCase().includes("image"))) {
+          friendly = "선택한 사진 형식을 브라우저가 읽지 못해요(예: HEIC). 사진을 JPEG/PNG로 변환 후 다시 시도해주세요.";
+        }
+
+        const detail = [code ? `코드: ${code}` : "", rawMsg ? `메시지: ${rawMsg}` : ""].filter(Boolean).join(" / ");
+        setUploadMessage(`${friendly}${detail ? `
+(${detail})` : ""}`, "danger");
       } finally {
         uploadBtn.disabled = false;
       }
@@ -1428,9 +1456,9 @@ render();
     /**********************
      * 사진 제출 UI 이벤트
      **********************/
-    if (photoInput) {
-      photoInput.addEventListener("change", () => {
-        const f = photoInput.files?.[0] || null;
+    if (photoInputAlbum || photoInputCamera) {
+      
+      function handlePickedFile(f) {
         selectedFile = f;
         setUploadMessage("");
         if (!f) {
@@ -1445,13 +1473,28 @@ render();
           if (photoPreview) {
             photoPreview.src = url;
             photoPreview.style.display = "block";
-            // 업로드 후 revoke는 업로드 직전에 해도 되지만, 여기서는 onload에서 해제
             photoPreview.onload = () => URL.revokeObjectURL(url);
           }
         } catch (e) {
           console.error(e);
         }
-      });
+      }
+
+      function bindPhotoInput(inputEl) {
+        if (!inputEl) return;
+        inputEl.addEventListener("change", () => {
+          const f = inputEl.files?.[0] || null;
+          handlePickedFile(f);
+          // 같은 파일을 다시 선택할 때 change가 다시 발생하도록 초기화
+          inputEl.value = "";
+        });
+      }
+
+      bindPhotoInput(photoInputAlbum);
+      bindPhotoInput(photoInputCamera);
+
+      pickAlbumBtn?.addEventListener("click", () => photoInputAlbum?.click());
+      pickCameraBtn?.addEventListener("click", () => photoInputCamera?.click());
     }
 
     if (confirmCheck) {

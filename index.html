@@ -1102,33 +1102,58 @@ try {
       return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
     }
 
-    async function compressImage(file, { maxSize = 1280, quality = 0.82, mimeType = "image/jpeg" } = {}) {
+        async function compressImage(file, {
+      targetSize = 500,      // 결과 캔버스 한 변(기본 500)
+      square = true,         // true면 500x500 고정(패딩), false면 비율 유지 리사이즈만
+      quality = 0.86,
+      mimeType = "image/jpeg",
+      background = "#ffffff" // jpeg는 투명 지원 X
+    } = {}) {
       const img = new Image();
       const url = URL.createObjectURL(file);
 
-      await new Promise((res, rej) => {
-        img.onload = res;
-        img.onerror = rej;
-        img.src = url;
-      });
+      try {
+        await new Promise((res, rej) => {
+          img.onload = res;
+          img.onerror = rej;
+          img.src = url;
+        });
 
-      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
+        // 축소만(업스케일 X)
+        const scale = Math.min(1, targetSize / Math.max(img.width, img.height));
+        const dw = Math.max(1, Math.round(img.width * scale));
+        const dh = Math.max(1, Math.round(img.height * scale));
 
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, 0, 0, w, h);
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
 
-      URL.revokeObjectURL(url);
+        if (square) {
+          canvas.width = targetSize;
+          canvas.height = targetSize;
 
-      const blob = await new Promise((res) => canvas.toBlob(res, mimeType, quality));
-      if (!blob) throw new Error("이미지 압축 실패");
-      return blob;
+          // 배경(흰색) 채우기
+          ctx.fillStyle = background;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // 가운데 정렬해서 그리기(패딩)
+          const dx = Math.round((targetSize - dw) / 2);
+          const dy = Math.round((targetSize - dh) / 2);
+          ctx.drawImage(img, dx, dy, dw, dh);
+        } else {
+          canvas.width = dw;
+          canvas.height = dh;
+          ctx.drawImage(img, 0, 0, dw, dh);
+        }
+
+        const blob = await new Promise((resolve) => {
+          canvas.toBlob((b) => resolve(b), mimeType, quality);
+        });
+
+        if (!blob) throw new Error("이미지 변환 실패");
+        return blob;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
     }
 
     function setUploadMessage(text, kind = "info") {
@@ -1195,7 +1220,7 @@ try {
           try { await storage.ref(existing.storagePath).delete(); } catch (e) { /* 무시 */ }
         }
 
-        const compressedBlob = await compressImage(selectedFile, { maxSize: 1280, quality: 0.82, mimeType: "image/jpeg" });
+        const compressedBlob = await compressImage(selectedFile, { targetSize: 500, square: true, quality: 0.86, mimeType: "image/jpeg" });
         const compressedBytes = compressedBlob.size;
 
         if (sizeInfo) {

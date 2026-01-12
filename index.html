@@ -201,6 +201,14 @@
       animation: pulse 2s infinite;
     }
 
+    /* 모드 토글(인증샷 제출/연차 표시) 선택 상태 강조 */
+    .action-buttons .btn {
+      border: 3px solid transparent;
+    }
+    .action-buttons .btn.active {
+      border-color: rgba(17, 24, 39, 0.65);
+    }
+
     
 
     .btn-danger {
@@ -740,7 +748,8 @@
       }
 
       .action-buttons {
-        grid-template-columns: 1fr;
+        /* 모바일에서도 버튼을 위/아래가 아니라 나란히 표시 */
+        grid-template-columns: 1fr 1fr;
       }
 
       .stat-card .value {
@@ -761,7 +770,8 @@
 <h3>로그인</h3>
 <div class="form-group">
 <label>영문 이름</label>
-<select id="userSelect"></select>
+<input id="userSearch" type="text" placeholder="이름 검색" autocomplete="off"/>
+<select id="userSelect" style="margin-top:10px;"></select>
 </div>
 <div class="form-group">
 <label>PIN 4자리 <span class="hint">(휴대번호 뒷4자리)</span></label>
@@ -799,7 +809,7 @@
 <div class="action-area">
 <div class="action-buttons">
 <button class="btn btn-success" id="submitBtn">
-<span>☕</span> 텀블러 인증 완료!
+<span>📷</span> 인증샷 제출
             </button>
 <button class="btn btn-warning" id="leaveBtn">
 <span>🏖️</span> 연차 표시
@@ -807,7 +817,7 @@
 </div>
 <div class="mode-indicator">
 <div class="mode-dot" id="modeDot"></div>
-<span>현재 모드: <b id="modeText">인증 제출</b></span>
+<span>현재 모드: <b id="modeText">인증샷 제출</b></span>
 <span style="color: var(--gray-400);">|</span>
 <span style="font-size: 12px; color: var(--gray-500);">날짜를 선택한 뒤 사진을 제출하세요 (연차 모드에서는 날짜를 클릭해 토글)</span>
 </div>
@@ -822,9 +832,7 @@
 <div style="margin-top: 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
 <!-- 앨범/카메라 선택: 앨범 업로드를 기본으로 제공합니다 -->
 <input accept="image/*" id="photoInputAlbum" type="file" style="display:none;" />
-<input accept="image/*" id="photoInputCamera" type="file" capture="environment" style="display:none;" />
 <button class="btn btn-outline" id="pickAlbumBtn" type="button"><span>🖼️</span> 앨범에서 선택</button>
-<button class="btn btn-outline" id="pickCameraBtn" type="button"><span>📷</span> 카메라로 촬영</button>
 
 <button class="btn btn-success" id="uploadBtn">
 <span>⬆️</span> 제출하기
@@ -1023,6 +1031,7 @@ try {
      * DOM
      **********************/
     const brandLogin = document.getElementById("brandLogin");
+    const userSearch = document.getElementById("userSearch");
     const userSelect = document.getElementById("userSelect");
     const pinInput = document.getElementById("pin");
     const loginBtn = document.getElementById("loginBtn");
@@ -1071,6 +1080,7 @@ try {
      * 상태
      **********************/
     let currentUser = null;
+    let activeUserNames = [];
     let submissions = {};
     let leaves = {};
     let leaveMode = false;
@@ -1355,33 +1365,97 @@ try {
      * 데이터 로드
      **********************/
     async function loadEmployees() {
-  try {
-    const snap = await db.ref("employees").get();
-    userSelect.innerHTML = "";
-    if (!snap.exists()) {
-      loginMsg.innerHTML = `<span class="error">직원 목록(employees)이 비어있습니다. (DB에 employees/{직원ID} 등록 필요)</span>`;
-      loginMsg.className = "login-msg error";
-      return;
+      try {
+        const snap = await db.ref("employees").get();
+        if (!snap.exists()) {
+          activeUserNames = [];
+          userSelect.innerHTML = "";
+          loginMsg.innerHTML = `<span class="error">직원 목록(employees)이 비어있습니다. (DB에 employees/{직원ID} 등록 필요)</span>`;
+          loginMsg.className = "login-msg error";
+          return;
+        }
+
+        const names = [];
+        snap.forEach(c => {
+          const v = c.val();
+          if (v && v.active) names.push(c.key);
+        });
+        names.sort((a,b) => String(a).localeCompare(String(b)));
+        activeUserNames = names;
+
+        renderUserOptions(userSearch?.value || "");
+      } catch (e) {
+        console.error("loadEmployees failed:", e);
+        loginMsg.innerHTML = `<span class="error">직원 목록을 불러오지 못했어요.</span><br><small>${(e && e.code) ? e.code : ""} ${(e && e.message) ? e.message : e}</small>`;
+        loginMsg.className = "login-msg error";
+      }
     }
 
-    snap.forEach(c => {
-      const v = c.val();
-      if (v && v.active) {
+    function filterUsers(query) {
+      const q = String(query || "").trim().toUpperCase();
+      if (!q) return activeUserNames.slice();
+      return activeUserNames.filter(n => String(n).toUpperCase().includes(q));
+    }
+
+    function renderUserOptions(query) {
+      if (!userSelect) return;
+      userSelect.innerHTML = "";
+
+      const list = filterUsers(query);
+      for (const name of list) {
         const o = document.createElement("option");
-        o.value = c.key;
-        o.textContent = c.key;
+        o.value = name;
+        o.textContent = name;
         userSelect.appendChild(o);
       }
-    });
 
-    if (!userSelect.value && userSelect.options.length > 0) {
-      userSelect.value = userSelect.options[0].value;
+      // 기본 선택값
+      if (userSelect.options.length > 0) {
+        userSelect.value = userSelect.options[0].value;
+      }
+
+      // 검색어가 정확히 매칭되면 해당 값 선택
+      const typed = String(query || "").trim();
+      if (typed) {
+        const exact = activeUserNames.find(n => String(n).toUpperCase() === typed.toUpperCase());
+        if (exact) userSelect.value = exact;
+      }
     }
-  } catch (e) {
-    console.error("loadEmployees failed:", e);
-    loginMsg.innerHTML = `<span class="error">직원 목록을 불러오지 못했어요.</span><br><small>${(e && e.code) ? e.code : ""} ${(e && e.message) ? e.message : e}</small>`;
-    loginMsg.className = "login-msg error";
-  }
+
+    let _userSearchBound = false;
+    function bindUserSearch() {
+      if (_userSearchBound) return;
+      _userSearchBound = true;
+
+      if (userSearch) {
+        userSearch.addEventListener("input", () => {
+          renderUserOptions(userSearch.value);
+        });
+        userSearch.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            // 검색 결과가 1개면 자동 선택
+            if (userSelect?.options?.length === 1) {
+              userSelect.value = userSelect.options[0].value;
+              if (pinInput) pinInput.focus();
+            } else {
+              // 정확 매칭이면 선택하고 PIN으로
+              const typed = String(userSearch.value || "").trim();
+              const exact = activeUserNames.find(n => String(n).toUpperCase() === typed.toUpperCase());
+              if (exact) {
+                userSelect.value = exact;
+                if (pinInput) pinInput.focus();
+              }
+            }
+          }
+        });
+      }
+
+      if (userSelect) {
+        userSelect.addEventListener("change", () => {
+          if (userSearch) userSearch.value = userSelect.value;
+        });
+      }
     }
 
     async function loadUserData() {
@@ -1429,12 +1503,64 @@ window.addEventListener("beforeunload", detachUserRealtime);
     /**********************
      * 로그인
      **********************/
-    async function login() {
-      const u = userSelect.value;
-      const p = pinInput.value;
+    async function startSession(u) {
+      currentUser = u;
+
+      // ✅ Storage 업로드 권한을 위해 익명 로그인 보장
+      try { await ensureAnonAuth(); } catch (e) { console.error("anon auth failed:", e); }
+
+      try {
+        await loadUserData();
+      } catch (e) {
+        loginMsg.innerHTML = `<span class="error">로그인 데이터 로드에 실패했어요.</span><br><small>${(e && e.code) ? e.code : ""} ${(e && e.message) ? e.message : e}</small>`;
+        loginMsg.className = "login-msg error";
+        throw e;
+      }
+
+      // ✅ 관리자 검수 결과가 즉시 반영되도록 리스너 연결
+      attachUserRealtime();
+
+      // ✅ 새로고침 시 로그인 유지(탭 내 세션)
+      try { sessionStorage.setItem("tm_user", u); } catch (e) { /* ignore */ }
+
+      brandLogin.style.display = "none";
+      loginBox.style.display = "none";
+      app.style.display = "block";
+
+      who.textContent = `👤 ${u}`;
+      todayLabel.textContent = todayYmd();
+
+      // 기본 선택 날짜(오늘 우선)
+      selectedDate = todayYmd();
+      if (selectedDateLabel) selectedDateLabel.textContent = selectedDate;
+
+      // 검색창 동기화
+      if (userSearch) userSearch.value = u;
+
+      render();
+    }
+
+    async function login(opts = {}) {
+      const restore = !!opts.restore;
+
+      // 입력(검색창 우선) + 목록값 결정
+      const typed = String(userSearch?.value || "").trim();
+      let u = String(userSelect?.value || "").trim();
+
+      if (typed) {
+        const exact = activeUserNames.find(n => String(n).toUpperCase() === typed.toUpperCase());
+        if (exact) u = exact;
+        else {
+          const list = filterUsers(typed);
+          if (list.length === 1) u = list[0];
+        }
+      }
+      if (userSelect && u) userSelect.value = u;
+
+      const p = String(pinInput?.value || "").trim();
 
       if (!u) {
-        loginMsg.innerHTML = `<span class="error">직원 목록이 비어있습니다.</span>`;
+        loginMsg.innerHTML = `<span class="error">직원을 선택해주세요.</span>`;
         loginMsg.className = "login-msg error";
         return;
       }
@@ -1450,38 +1576,49 @@ window.addEventListener("beforeunload", detachUserRealtime);
       if (!emp.active) {
         loginMsg.innerHTML = `<span class="error">비활성 계정입니다.</span>`;
         loginMsg.className = "login-msg error";
+        try { sessionStorage.removeItem("tm_user"); } catch (e) { /* ignore */ }
         return;
       }
 
-      if (String(emp.pin) !== String(p)) {
-        loginMsg.innerHTML = `<span class="error">PIN이 틀렸습니다.</span>`;
-        loginMsg.className = "login-msg error";
-        return;
+      if (!restore) {
+        if (!p) {
+          loginMsg.innerHTML = `<span class="error">PIN을 입력해주세요.</span>`;
+          loginMsg.className = "login-msg error";
+          return;
+        }
+        if (String(emp.pin) !== String(p)) {
+          loginMsg.innerHTML = `<span class="error">PIN이 틀렸습니다.</span>`;
+          loginMsg.className = "login-msg error";
+          return;
+        }
       }
 
-      currentUser = u;
-// ✅ Storage 업로드 권한을 위해 익명 로그인 보장
-try { await ensureAnonAuth(); } catch (e) { console.error("anon auth failed:", e); }
+      await startSession(u);
+    }
 
-try {
-  await loadUserData();
-} catch (e) {
-  loginMsg.innerHTML = `<span class="error">로그인 데이터 로드에 실패했어요.</span><br><small>${(e && e.code) ? e.code : ""} ${(e && e.message) ? e.message : e}</small>`;
-  loginMsg.className = "login-msg error";
-  return;
-}
+    async function restoreSession() {
+      let saved = null;
+      try { saved = sessionStorage.getItem("tm_user"); } catch (e) { saved = null; }
+      if (!saved) return false;
 
-brandLogin.style.display = "none";
-      loginBox.style.display = "none";
-      app.style.display = "block";
+      const exact = activeUserNames.find(n => String(n).toUpperCase() === String(saved).toUpperCase());
+      if (!exact) {
+        try { sessionStorage.removeItem("tm_user"); } catch (e) { /* ignore */ }
+        return false;
+      }
 
-      who.textContent = `👤 ${u}`;
-      todayLabel.textContent = todayYmd();
+      if (userSearch) userSearch.value = exact;
+      renderUserOptions(exact);
+      if (userSelect) userSelect.value = exact;
+      if (pinInput) pinInput.value = "";
 
-      // 기본 선택 날짜(오늘 우선)
-      selectedDate = todayYmd();
-      if (selectedDateLabel) selectedDateLabel.textContent = selectedDate;
-render();
+      try {
+        await login({ restore: true });
+        return true;
+      } catch (e) {
+        try { sessionStorage.removeItem("tm_user"); } catch (e2) { /* ignore */ }
+        return false;
+      }
     }
 
     loginBtn.onclick = login;
@@ -1494,7 +1631,7 @@ render();
      **********************/
     function setModeLeave(on) {
       leaveMode = on;
-      modeText.textContent = leaveMode ? "연차 표시" : "인증 제출";
+      modeText.textContent = leaveMode ? "연차 표시" : "인증샷 제출";
 
       if (leaveMode) {
         modeDot.classList.add("leave");
@@ -1504,6 +1641,7 @@ render();
       } else {
         modeDot.classList.remove("leave");
         leaveBtn.classList.remove("active");
+        submitBtn.classList.add("active");
         if (photoPanel) photoPanel.style.display = "block";
       }
     }
@@ -1773,7 +1911,11 @@ render();
       initPeriods();
       try { await ensureAnonAuth(); } catch (e) { console.error("anon auth failed:", e); }
       await loadEmployees();
+      bindUserSearch();
       setModeLeave(false);
+
+      // ✅ 새로고침 시 로그인 유지 (탭 내 세션)
+      await restoreSession();
     })().catch(e => { console.error(e); });
 
   </script>

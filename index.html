@@ -1277,6 +1277,7 @@ try {
         if (photoPreview) photoPreview.style.display = "none";
 
         await loadUserData();
+  attachUserRealtime();
         render();
 
         setUploadMessage("✅ 제출 완료! (검수중) — 검수 결과에 따라 부적격 처리될 수 있어요.", "success");
@@ -1392,6 +1393,38 @@ try {
     throw e;
   }
 }
+
+
+// ✅ 실시간 반영: 관리자 검수 결과(approved/pending)가 즉시 화면에 반영되도록 RTDB 리스너를 붙입니다.
+let _subRef = null;
+let _leaveRef = null;
+
+function attachUserRealtime() {
+  detachUserRealtime();
+  if (!currentUser) return;
+
+  _subRef = db.ref(`users/${currentUser}/submissions`);
+  _leaveRef = db.ref(`users/${currentUser}/leaves`);
+
+  _subRef.on("value", (snap) => {
+    submissions = snap.exists() ? (snap.val() || {}) : {};
+    render();
+  });
+  _leaveRef.on("value", (snap) => {
+    leaves = snap.exists() ? (snap.val() || {}) : {};
+    render();
+  });
+}
+
+function detachUserRealtime() {
+  if (_subRef) _subRef.off();
+  if (_leaveRef) _leaveRef.off();
+  _subRef = null;
+  _leaveRef = null;
+}
+
+window.addEventListener("beforeunload", detachUserRealtime);
+
 
     /**********************
      * 로그인

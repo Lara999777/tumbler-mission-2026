@@ -1,12 +1,20 @@
-
 <!DOCTYPE html>
-
 <html lang="ko">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>2026 환경보호캠페인 - 텀블러 미션</title>
-<style>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <title>2026 환경보호캠페인 - 텀블러 미션</title>
+
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "2fe03707-e300-4de3-847b-78c6239c8601",
+      });
+    });
+  </script>
+  <style>
     :root {
       --primary: #7c3aed;
       --primary-light: #a78bfa;
@@ -208,8 +216,6 @@
     .action-buttons .btn.active {
       border-color: rgba(17, 24, 39, 0.65);
     }
-
-    
 
     .btn-danger {
       background: linear-gradient(135deg, var(--danger) 0%, #ff5a5a 100%);
@@ -616,7 +622,6 @@
       font-size: 18px;
     }
 
-    
     .status-text{
       font-size: 11px;
       margin-top: 6px;
@@ -760,12 +765,10 @@
 </head>
 <body>
 <div class="container">
-<!-- ✅ 로그인 전 제목 -->
 <div class="brand" id="brandLogin">
 <img alt="logo" src="logo.png"/>
 <h2>2026 환경보호캠페인<br/>텀블러 미션</h2>
 </div>
-<!-- 로그인 박스 -->
 <div class="login-box" id="loginBox">
 <h3>로그인</h3>
 <div class="form-group">
@@ -782,21 +785,17 @@
       </button>
 <p class="login-msg" id="loginMsg"></p>
 </div>
-<!-- ✅ 로그인 후 화면 -->
 <div id="app" style="display:none">
-<!-- ✅ 로그인 후 제목 -->
 <div class="brand" id="brandApp">
 <img alt="logo" src="logo.png"/>
 <h2>2026 환경보호캠페인<br/>텀블러 미션</h2>
 </div>
 <div class="app-container">
-<!-- 사용자 정보 바 -->
 <div class="user-bar">
 <span class="user-badge user-name" id="who"></span>
 <span class="user-badge">📅 오늘: <b id="todayLabel"></b></span>
 <span class="status-badge pending" id="statusBadge">⏳ 진행 중</span>
 </div>
-<!-- ✅ 안내 문구 -->
 <div class="notice">
 <div class="notice-title">미션 성공 조건</div>
 <div class="notice-text">
@@ -805,7 +804,6 @@
             검수 결과에 따라 <b>부적격 처리</b>될 수 있습니다.
           </div>
 </div>
-<!-- 액션 버튼 영역 -->
 <div class="action-area">
 <div class="action-buttons">
 <button class="btn btn-success" id="submitBtn">
@@ -822,7 +820,6 @@
 <span style="font-size: 12px; color: var(--gray-500);">날짜를 선택한 뒤 사진을 제출하세요 (연차 모드에서는 날짜를 클릭해 토글)</span>
 </div>
 </div>
-<!-- 📷 사진 제출 패널 (인증 제출 모드에서 사용) -->
 <div class="notice" id="photoPanel" style="margin-top: 14px;">
 <div class="notice-title">📷 인증샷 제출</div>
 <div class="notice-text" style="margin-top: 8px;">
@@ -830,7 +827,6 @@
             사진을 선택한 뒤 <b>제출</b>하면 자동으로 용량을 줄여 업로드합니다.
           </div>
 <div style="margin-top: 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-<!-- 앨범/카메라 선택: 앨범 업로드를 기본으로 제공합니다 -->
 <input accept="image/*" id="photoInputAlbum" type="file" style="display:none;" />
 <button class="btn btn-outline" id="pickAlbumBtn" type="button"><span>🖼️</span> 앨범에서 선택</button>
 
@@ -848,7 +844,6 @@
 </div>
 <p id="uploadMsg" style="margin:10px 0 0; font-size:13px;"></p>
 </div>
-<!-- ✅ 제출 전 확인 모달 -->
 <div id="confirmModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999;">
 <div style="max-width:420px; margin:10vh auto; background:#fff; border-radius:16px; padding:16px;">
 <div style="font-weight:800; font-size:16px;">제출 전 확인</div>
@@ -871,12 +866,10 @@
 </div>
 </div>
 </div>
-<!-- 분기 선택 -->
 <div class="period-select-wrapper">
 <label>📊 분기 선택</label>
 <select id="periodSelect"></select>
 </div>
-<!-- ✅ 분기별 집계 -->
 <div class="stats-grid">
 <div class="stat-card">
 <div class="icon">📆</div>
@@ -899,7 +892,6 @@
 <div class="value" id="statRate">-</div>
 </div>
 </div>
-<!-- 프로그레스 바 -->
 <div class="progress-section">
 <div class="progress-header">
 <span class="progress-title">🏆 미션 진행률</span>
@@ -911,7 +903,6 @@
 </div>
 <p class="progress-text" id="remainText"></p>
 </div>
-<!-- 캘린더 -->
 <div class="calendar-section">
 <div class="calendar-section-title">미션 캘린더</div>
 <div class="calendar-card">
@@ -942,7 +933,6 @@
 </div>
 </div>
 </div>
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -1312,8 +1302,7 @@ try {
         }
 
         const detail = [code ? `코드: ${code}` : "", rawMsg ? `메시지: ${rawMsg}` : ""].filter(Boolean).join(" / ");
-        setUploadMessage(`${friendly}${detail ? `
-(${detail})` : ""}`, "danger");
+        setUploadMessage(`${friendly}${detail ? `\n(${detail})` : ""}`, "danger");
       } finally {
         uploadBtn.disabled = false;
       }
